@@ -10,6 +10,7 @@ if ( -not (Test-Path -Path C:\Python27 -PathType Container) ) {
 
 C:\Python27\python "$env:TEMP\get-pip.py"
 if ($LastExitCode -ne 0) {
+    del "$env:TEMP\get-pip.py"
     Write-Host -NoNewline Failed to install Python pip. Press any key to exit ...
     $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") > $null
     exit 1

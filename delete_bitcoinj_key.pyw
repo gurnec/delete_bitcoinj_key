@@ -34,7 +34,7 @@
 #
 #                      Thank You!
 
-__version__ =  '0.3.0'
+__version__ =  '0.3.1'
 
 from warnings import warn
 import hashlib, sys, getpass, os, os.path
@@ -203,7 +203,7 @@ def save_wallet(pb_wallet, wallet_file, password = None):
     :param wallet_file: a file opened for writing
     :type wallet_file: file
     :param password: UTF-8 password if encryption is desired, else None
-    :type password: str or NoneType
+    :type password: unicode or NoneType
     """
 
     # Serialize the wallet protobuf
@@ -215,7 +215,7 @@ def save_wallet(pb_wallet, wallet_file, password = None):
     else:
         # Derive a new encryption key and IV
         salt = os.urandom(8)
-        salted_pw = password + salt
+        salted_pw = password.encode('UTF-8') + salt
         key1 = md5(salted_pw).digest()
         key2 = md5(key1 + salted_pw).digest()
         iv   = md5(key2 + salted_pw).digest()
@@ -268,7 +268,7 @@ def delete_keys(pb_wallet, hash160_bytes_list):
 def run_from_command_line():
     assert len(sys.argv) > 1
     if any(arg.startswith('-') for arg in sys.argv[1:]):
-        sys.exit('usage: delete_bitcoinj_key.py encrypted-wallet-backup [bitcoin-address-1 bitcoin-address-2 ...]')
+        sys.exit('usage: delete_bitcoinj_key.pyw encrypted-wallet-backup [bitcoin-address-1 bitcoin-address-2 ...]')
 
     # Make sure the output file doesn't already exist
     wallet_filename = sys.argv[1]
@@ -280,7 +280,15 @@ def run_from_command_line():
         sys.exit("output file '{}' already exists, won't overwrite".format(new_wallet_filename))
 
     if len(sys.argv) == 2:
-        base58check_list = [ raw_input("Please enter a single address whose key you'd like to delete: ") ]
+        print "Please enter one address to delete per line, or an empty line when done:"
+        base58check_list = []
+        while True:
+            address = raw_input("> ").strip()
+            if not address:
+                break
+            base58check_list.append(address)
+        if not base58check_list:
+            exit(1)
     else:
         base58check_list = sys.argv[2:]
 
@@ -292,12 +300,12 @@ def run_from_command_line():
         is_encrypted = is_wallet_encrypted(wallet_file)
         while True:
             if is_encrypted:
-                encoding = sys.stdin.encoding or ''
+                encoding = sys.stdin.encoding or 'ASCII'
                 if 'utf' not in encoding.lower():
                     warn('terminal does not support UTF; passwords with non-ASCII chars might not work')
                 # Replace getpass.getpass with raw_input if there's trouble reading non-ASCII characters
                 password = getpass.getpass('Wallet backup password: ')
-                if isinstance(password, str) and encoding:
+                if isinstance(password, str):
                     password = password.decode(encoding)  # convert from terminal's encoding to unicode
             try:
                 wallet = load_wallet(wallet_file, password)
@@ -376,6 +384,8 @@ class DeleteBitcoinjKey(object):
                     password = tkSimpleDialog.askstring('Password', "Please enter the password of the wallet backup:", show='*')
                     if not password:
                         return
+                    if isinstance(password, str):
+                        password = password.decode('ASCII')  # if not already unicode, convert to it
                 try:
                     self.wallet = load_wallet(wallet_file, password)
                     break
